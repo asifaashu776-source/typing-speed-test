@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="description" content="SpeedType Pro - Ultimate Typing Speed Test with Gamification, Achievements, and Real-time Feedback">
+    <meta name="theme-color" content="#6c5ce7">
+    <title>SpeedType Pro | Modern Typing Speed Test</title>
+    <!-- Chart.js for performance graph -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <!-- Canvas Confetti -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Poppins', 'Segoe UI', system-ui, -apple-system, sans-serif;
+            transition: all 0.2s ease;
+        }
+
+        /* Floating Particles Background */
+        #particles-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        body {
+            min-height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            position: relative;
+            transition: background 0.3s;
+        }
+
+        /* Dark/Light Mode */
+        body.light-mode {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+        }
+        body.neon-mode {
+            background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.3);
+        }
+        body.neon-mode .glass-card {
+            border: 1px solid #0ff;
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.4);
+        }
+
+        .glass-card {
+            background: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(12px);
+            border-radius: 32px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .app-container {
+            max-width: 1400px;
+            width: 100%;
+            z-index: 2;
+            position: relative;
+        }
+
+        /* Header & Stats */
+        .stats-bar {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .stat-card {
+            background: rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(8px);
+            border-radius: 24px;
+            padding: 12px 20px;
+            flex: 1;
+            min-width: 100px;
+            text-align: center;
+            font-weight: 600;
+            color: white;
+        }
+        body.light-mode .stat-card { background: rgba(0,0,0,0.1); color: #1e1e2f; }
+        .stat-value { font-size: 2rem; font-weight: 800; letter-spacing: 1px; }
+        .stat-label { font-size: 0.8rem; opacity: 0.8; text-transform: uppercase; }
+
+        /* Typing Area */
+        .typing-area {
+            background: rgba(0, 0, 0, 0.35);
+            backdrop-filter: blur(16px);
+            border-radius: 32px;
+            padding: 30px;
+            margin: 20px 0;
+        }
+        .target-text {
+            font-size: 1.6rem;
+            line-height: 2.2rem;
+            font-family: 'Courier New', 'Fira Code', monospace;
+            letter-spacing: 1px;
+            word-break: break-word;
+            background: rgba(0,0,0,0.3);
+            padding: 20px;
+            border-radius: 20px;
+            margin-bottom: 20px;
+            color: #ddd;
+        }
+        .target-text span { display: inline-block; transition: all 0.05s; }
+        .target-text .correct { color: #4caf50; text-shadow: 0 0 5px #4caf50; background: none; }
+        .target-text .wrong { color: #f44336; background: rgba(244,67,54,0.2); text-decoration: underline; }
+        .target-text .current { background: #ffeb3b; color: #1e1e2f; border-radius: 4px; box-shadow: 0 0 8px gold; }
+        textarea {
+            width: 100%;
+            background: rgba(255,255,255,0.15);
+            border: 2px solid rgba(255,255,255,0.4);
+            border-radius: 24px;
+            padding: 18px;
+            font-size: 1.2rem;
+            font-family: monospace;
+            color: white;
+            resize: vertical;
+            outline: none;
+            transition: 0.2s;
+        }
+        body.light-mode textarea { color: #111; background: rgba(0,0,0,0.05); }
+        textarea:focus { border-color: #6c5ce7; box-shadow: 0 0 12px #6c5ce7; }
+
+        /* Controls */
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin: 20px 0;
+            justify-content: center;
+        }
+        .btn {
+            background: rgba(255,255,255,0.2);
+            border: none;
+            padding: 10px 20px;
+            border-radius: 40px;
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+            backdrop-filter: blur(4px);
+            transition: 0.2s;
+        }
+        .btn:hover { transform: scale(1.05); background: rgba(255,255,255,0.35); box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
+        .btn-primary { background: #6c5ce7; box-shadow: 0 4px 12px #6c5ce7aa; }
+        .timer-btn.active { background: #00b894; border: 2px solid white; }
+        .custom-timer-input { width: 80px; background: rgba(0,0,0,0.6); border-radius: 40px; padding: 8px; text-align: center; color: white; }
+
+        /* Progress Bar */
+        .progress-container { width: 100%; height: 10px; background: #333; border-radius: 10px; margin: 15px 0; overflow: hidden; }
+        .progress-fill { width: 0%; height: 100%; background: linear-gradient(90deg, #00b894, #6c5ce7); transition: width 0.2s; }
+
+        /* Dashboard & Leaderboard */
+        .dashboard {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        .dashboard-card { background: rgba(0,0,0,0.3); backdrop-filter: blur(12px); border-radius: 28px; padding: 20px; }
+        .badge-list { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 12px; }
+        .badge { background: gold; padding: 5px 12px; border-radius: 40px; font-weight: bold; color: #1e1e2f; font-size: 0.8rem; }
+        .combo-pop { animation: bounce 0.3s ease; }
+        @keyframes bounce { 0% { transform: scale(1); } 50% { transform: scale(1.2); color: #ff7675; } 100% { transform: scale(1); } }
+
+        /* Responsive */
+        @media (max-width: 760px) {
+            .target-text { font-size: 1rem; line-height: 1.5rem; }
+            .stat-value { font-size: 1.3rem; }
+            .btn { padding: 6px 12px; font-size: 0.8rem; }
+        }
+
+        .settings-modal {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0,0,0,0.6);
+            backdrop-filter: blur(8px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            visibility: hidden;
+            opacity: 0;
+            transition: 0.2s;
+        }
+        .settings-modal.active {
+            visibility: visible;
+            opacity: 1;
+        }
+        .modal-content {
+            background: #1e1e2f;
+            border-radius: 32px;
+            padding: 30px;
+            max-width: 500px;
+            width: 90%;
+            color: white;
+        }
+        .footer { text-align: center; margin-top: 30px; color: white; opacity: 0.7; font-size: 0.8rem; }
+    </style>
+</head>
+<body>
+<canvas id="particles-canvas"></canvas>
+<div class="app-container">
+    <!-- Header with logo -->
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;">
+        <h1 style="color: white; text-shadow: 0 2px 10px rgba(0,0,0,0.5);">⚡ SpeedType Pro</h1>
+        <div style="display: flex; gap: 10px;">
+            <button id="darkLightToggle" class="btn">🌓 Dark/Light</button>
+            <button id="neonToggle" class="btn">💚 Neon Mode</button>
+            <button id="fullscreenBtn" class="btn">🖥️ Fullscreen</button>
+            <button id="settingsBtn" class="btn">⚙️ Settings</button>
+        </div>
+    </div>
+    <!-- Live Stats -->
+    <div class="stats-bar">
+        <div class="stat-card"><div class="stat-value" id="wpmDisplay">0</div><div class="stat-label">WPM</div></div>
+        <div class="stat-card"><div class="stat-value" id="cpmDisplay">0</div><div class="stat-label">CPM</div></div>
+        <div class="stat-card"><div class="stat-value" id="accuracyDisplay">100</div><div class="stat-label">Accuracy %</div></div>
+        <div class="stat-card"><div class="stat-value" id="mistakesDisplay">0</div><div class="stat-label">Mistakes</div></div>
+        <div class="stat-card"><div class="stat-value" id="comboDisplay">0</div><div class="stat-label">🔥 COMBO</div></div>
+    </div>
+
+    <!-- Timer Controls -->
+    <div class="controls">
+        <button class="timer-btn btn" data-time="15">15s</button>
+        <button class="timer-btn btn" data-time="30">30s</button>
+        <button class="timer-btn btn" data-time="60">60s</button>
+        <input type="number" id="customTimerSec" placeholder="sec" class="custom-timer-input" value="45">
+        <button id="setCustomTimer" class="btn">Set Custom</button>
+        <button id="restartBtn" class="btn btn-primary">🔄 Restart</button>
+        <button id="pauseResumeBtn" class="btn">⏸️ Pause</button>
+        <button id="dailyChallengeBtn" class="btn">⭐ Daily Challenge</button>
+        <button id="soundToggleBtn" class="btn">🔊 Sound On</button>
+        <button id="bgMusicToggle" class="btn">🎵 Music Off</button>
+    </div>
+
+    <!-- Typing Area -->
+    <div class="typing-area">
+        <div id="targetParagraph" class="target-text">Click Restart or start typing...</div>
+        <textarea id="userInput" rows="4" placeholder="Start typing here... (Timer starts on first key)" disabled></textarea>
+        <div class="progress-container"><div id="progressFill" class="progress-fill"></div></div>
+    </div>
+
+    <!-- Dashboard: Leaderboard, Achievements, Stats & Graph -->
+    <div class="dashboard">
+        <div class="dashboard-card"><h3>🏆 Leaderboard (Top 5)</h3><div id="leaderboardList"></div></div>
+        <div class="dashboard-card"><h3>🎖️ Achievements</h3><div id="achievementsList" class="badge-list"></div></div>
+        <div class="dashboard-card"><h3>📈 Performance Graph (WPM)</h3><canvas id="wpmChart" width="300" height="150"></canvas></div>
+        <div class="dashboard-card"><h3>🔥 Heatmap (Error Keys)</h3><div id="heatmapStats" style="font-size: 0.8rem;"></div></div>
+        <div class="dashboard-card"><h3>👑 Player Stats</h3><div id="playerStats">Level: 0 | XP: 0 | Rank: Beginner</div><div id="rankTitle"></div></div>
+    </div>
+    <div class="footer">Made with ⚡ | Real‑time WPM | Achievements | XP System</div>
+</div>
+
+<!-- Settings Modal -->
+<div id="settingsModal" class="settings-modal"><div class="modal-content"><h2>Customize</h2><label>Font Size: </label><input type="range" id="fontSlider" min="12" max="32" value="16"><br><label>Theme Color: </label><input type="color" id="themeColor" value="#6c5ce7"><br><button id="closeModal" class="btn">Close</button></div></div>
+
+<script>
+    // ---------- DOM Elements ----------
+    const targetDiv = document.getElementById('targetParagraph');
+    const userTextarea = document.getElementById('userInput');
+    const wpmSpan = document.getElementById('wpmDisplay');
+    const cpmSpan = document.getElementById('cpmDisplay');
+    const accuracySpan = document.getElementById('accuracyDisplay');
+    const mistakesSpan = document.getElementById('mistakesDisplay');
+    const comboDisplaySpan = document.getElementById('comboDisplay');
+    const progressFill = document.getElementById('progressFill');
+    const leaderboardDiv = document.getElementById('leaderboardList');
+    const achievementsDiv = document.getElementById('achievementsList');
+    const playerStatsDiv = document.getElementById('playerStats');
+    const rankSpan = document.getElementById('rankTitle');
+
+    // Data State
+    let currentParagraph = "The quick brown fox jumps over the lazy dog. Typing speed tests measure how fast you can type accurately.";
+    let userInput = "";
+    let testActive = false;
+    let paused = false;
+    let timerInterval = null;
+    let timeLeft = 30;
+    let selectedTime = 30;
+    let startTimestamp = null;
+    let mistakes = 0;
+    let totalTyped = 0;
+    let correctChars = 0;
+    let combo = 0;
+    let soundEnabled = true;
+    let musicEnabled = false;
+    let bgAudio = null;
+    
+    // XP / Level / Score System
+    let userXP = 0, userLevel = 1, highWPM = 0;
+    const achievementsUnlocked = { fastTyper: false, accuracyMaster: false, speedDemon: false };
+    let wpmHistory = []; // store last 5 results
+    let errorKeyMap = {}; // for heatmap
+
+    // localStorage Load
+    function loadLocalData() {
+        const savedXP = localStorage.getItem('speedtype_xp');
+        if(savedXP) userXP = parseInt(savedXP);
+        const savedLevel = localStorage.getItem('speedtype_level');
+        if(savedLevel) userLevel = parseInt(savedLevel);
+        const savedAchievements = localStorage.getItem('speedtype_achievements');
+        if(savedAchievements) Object.assign(achievementsUnlocked, JSON.parse(savedAchievements));
+        const savedHistory = localStorage.getItem('speedtype_wpmHistory');
+        if(savedHistory) wpmHistory = JSON.parse(savedHistory);
+        const savedErrors = localStorage.getItem('speedtype_errorMap');
+        if(savedErrors) errorKeyMap = JSON.parse(savedErrors);
+        const savedLeaderboard = localStorage.getItem('speedtype_leaderboard');
+        if(savedLeaderboard) leaderboardData = JSON.parse(savedLeaderboard);
+        else resetLeaderboard();
+        updateLeaderboardUI();
+        updateAchievementsUI();
+        updatePlayerStatsUI();
+        updateChart();
+        updateHeatmapUI();
+    }
+    let leaderboardData = [];
+    function resetLeaderboard() { leaderboardData = []; localStorage.setItem('speedtype_leaderboard', JSON.stringify(leaderboardData)); }
+    function saveLeaderboard() { localStorage.setItem('speedtype_leaderboard', JSON.stringify(leaderboardData)); }
+    function addScoreToLeaderboard(wpm, accuracy) {
+        leaderboardData.push({ wpm, accuracy, date: new Date().toLocaleDateString(), name: "You" });
+        leaderboardData.sort((a,b) => b.wpm - a.wpm);
+        leaderboardData = leaderboardData.slice(0, 5);
+        saveLeaderboard();
+        updateLeaderboardUI();
+    }
+    function updateLeaderboardUI() {
+        if(leaderboardData.length===0) leaderboardDiv.innerHTML = "<div>No scores yet</div>";
+        else leaderboardDiv.innerHTML = leaderboardData.map(s => `<div>🏅 ${s.wpm} WPM | ${s.accuracy}% acc</div>`).join('');
+    }
+
+    function updateAchievementsUI() {
+        let html = '';
+        if(achievementsUnlocked.fastTyper) html += '<span class="badge">⚡ Fast Typer (70+ WPM)</span>';
+        if(achievementsUnlocked.accuracyMaster) html += '<span class="badge">🎯 Accuracy Master (98%+)</span>';
+        if(achievementsUnlocked.speedDemon) html += '<span class="badge">🔥 Speed Demon (100+ WPM)</span>';
+        if(!html) html = '<span>🔒 Complete challenges</span>';
+        achievementsDiv.innerHTML = html;
+    }
+    function unlockAchievement(name) {
+        if(name==='fastTyper' && !achievementsUnlocked.fastTyper) { achievementsUnlocked.fastTyper=true; saveAchievements(); updateAchievementsUI(); showConfetti();}
+        if(name==='accuracyMaster' && !achievementsUnlocked.accuracyMaster) { achievementsUnlocked.accuracyMaster=true; saveAchievements(); updateAchievementsUI(); showConfetti();}
+        if(name==='speedDemon' && !achievementsUnlocked.speedDemon) { achievementsUnlocked.speedDemon=true; saveAchievements(); updateAchievementsUI(); showConfetti();}
+    }
+    function saveAchievements() { localStorage.setItem('speedtype_achievements', JSON.stringify(achievementsUnlocked)); }
+    function updatePlayerStatsUI() {
+        let rank = "Beginner";
+        if(userLevel>=10) rank="Legend";
+        else if(userLevel>=7) rank="Pro";
+        else if(userLevel>=4) rank="Intermediate";
+        playerStatsDiv.innerText = `Level ${userLevel} | XP: ${userXP} | Rank: ${rank}`;
+        rankSpan.innerText = `🏅 ${rank}`;
+    }
+    function addXP(amount) {
+        userXP += amount;
+        let newLevel = Math.floor(Math.sqrt(userXP / 100)) + 1;
+        if(newLevel > userLevel) { userLevel = newLevel; updatePlayerStatsUI(); }
+        localStorage.setItem('speedtype_xp', userXP);
+        localStorage.setItem('speedtype_level', userLevel);
+        updatePlayerStatsUI();
+    }
+    function saveWPMHistory(wpm) { wpmHistory.unshift(wpm); if(wpmHistory.length>6) wpmHistory.pop(); localStorage.setItem('speedtype_wpmHistory', JSON.stringify(wpmHistory)); updateChart(); }
+    function updateChart() { if(window.wpmChartInstance) window.wpmChartInstance.destroy(); const ctx = document.getElementById('wpmChart').getContext('2d'); window.wpmChartInstance = new Chart(ctx, { type: 'line', data: { labels: wpmHistory.map((_,i)=>`#${i+1}`), datasets: [{ label: 'WPM', data: wpmHistory, borderColor: '#6c5ce7', tension: 0.3, fill: false }] } }); }
+    function updateHeatmapUI() { let topErrors = Object.entries(errorKeyMap).sort((a,b)=>b[1]-a[1]).slice(0,5); document.getElementById('heatmapStats').innerHTML = topErrors.map(([k,v])=>`${k}: ${v} errors`).join(' | ') || "No errors yet"; }
+    function recordErrorKey(char) { if(char && char.trim()) { errorKeyMap[char] = (errorKeyMap[char]||0)+1; localStorage.setItem('speedtype_errorMap', JSON.stringify(errorKeyMap)); updateHeatmapUI(); } }
+
+    // Highlighting Logic
+    function renderHighlight() {
+        const target = currentParagraph;
+        const input = userInput;
+        let html = "";
+        for(let i=0; i<target.length; i++) {
+            let char = target[i];
+            let statusClass = "";
+            if(i < input.length) {
+                if(input[i] === char) statusClass = "correct";
+                else statusClass = "wrong";
+            }
+            if(i === input.length && testActive && !paused && input.length < target.length) statusClass += " current";
+            html += `<span class="${statusClass}">${escapeHtml(char)}</span>`;
+        }
+        targetDiv.innerHTML = html;
+        // progress
+        let percent = (input.length / target.length) * 100;
+        progressFill.style.width = percent+"%";
+    }
+    function escapeHtml(str) { return str.replace(/[&<>]/g, function(m){if(m==='&') return '&amp;'; if(m==='<') return '&lt;'; if(m==='>') return '&gt;'; return m;}); }
+
+    // Stats Update (WPM/CPM/Acc)
+    function updateStats() {
+        if(!testActive || paused) return;
+        let elapsedSec = (selectedTime - timeLeft);
+        if(elapsedSec <=0) elapsedSec = 0.001;
+        let minutes = elapsedSec / 60;
+        let rawWPM = (correctChars / 5) / minutes;
+        let wpm = Math.max(0, Math.floor(rawWPM));
+        let cpm = correctChars;
+        let accuracy = totalTyped === 0 ? 100 : (correctChars / totalTyped) * 100;
+        wpmSpan.innerText = wpm;
+        cpmSpan.innerText = cpm;
+        accuracySpan.innerText = Math.floor(accuracy);
+        mistakesSpan.innerText = mistakes;
+    }
+    function computeFinalRewards() {
+        let finalWPM = parseInt(wpmSpan.innerText);
+        let finalAcc = parseFloat(accuracySpan.innerText);
+        let bonusXP = finalWPM * 2;
+        if(finalAcc > 95) bonusXP += 50;
+        if(finalWPM >= 100) { bonusXP += 100; unlockAchievement('speedDemon'); }
+        if(finalWPM >= 70) unlockAchievement('fastTyper');
+        if(finalAcc >= 98) unlockAchievement('accuracyMaster');
+        if(finalWPM>highWPM) highWPM=finalWPM;
+        let comboBonus = combo * 2;
+        bonusXP += comboBonus;
+        addXP(bonusXP);
+        addScoreToLeaderboard(finalWPM, Math.floor(finalAcc));
+        saveWPMHistory(finalWPM);
+        if(finalWPM > 60) showConfetti();
+    }
+    function endTest() {
+        if(timerInterval) clearInterval(timerInterval);
+        testActive = false;
+        paused = false;
+        userTextarea.disabled = true;
+        computeFinalRewards();
+        // Check highscore confetti extra
+        if(leaderboardData.length && leaderboardData[0].wpm === parseInt(wpmSpan.innerText)) showConfetti();
+    }
+    function startTimer() { if(timerInterval) clearInterval(timerInterval); timerInterval = setInterval(() => { if(!testActive || paused) return; if(timeLeft <= 0) { clearInterval(timerInterval); endTest(); } else { timeLeft--; updateProgressBar(); updateStats(); if(timeLeft===0) endTest(); } }, 1000); }
+    function updateProgressBar() { let percent = (timeLeft / selectedTime) * 100; document.getElementById('progressFill').style.background = `linear-gradient(90deg, #e84393, #6c5ce7)`;
+        const prog = document.querySelector('.progress-fill'); if(prog) prog.style.width = Math.max(0,percent)+"%"; }
+    function resetTest(newParagraph = null) {
+        if(timerInterval) clearInterval(timerInterval);
+        testActive = false; paused = false; userInput = ""; mistakes = 0; correctChars = 0; totalTyped = 0; combo = 0; comboDisplaySpan.innerText = "0";
+        if(newParagraph) currentParagraph = newParagraph; else currentParagraph = getRandomParagraph();
+        userTextarea.value = "";
+        userTextarea.disabled = false;
+        userTextarea.focus();
+        timeLeft = selectedTime;
+        renderHighlight();
+        updateStats();
+        updateProgressBar();
+        startTimestamp = null;
+        // reset but timer not started yet: starts on first keystroke
+        testActive = true; // but timer countdown not started until first keypress
+        let startedFlag = false;
+        const startOnType = () => {
+            if(!startedFlag && testActive && !paused && userInput.length===0) { startedFlag=true; startTimer(); }
+            userTextarea.removeEventListener('input', startOnType);
+        };
+        userTextarea.addEventListener('input', startOnType, {once:true});
+        // clear previous interval
+        if(timerInterval) clearInterval(timerInterval);
+        timerInterval = null;
+        userTextarea.disabled = false;
+    }
+    function getRandomParagraph() { const paras = [ "Typing speed is measured in words per minute. Practice daily to improve accuracy and speed. Focus on rhythm.", "The art of fast typing requires muscle memory and consistent training. Use all ten fingers on the keyboard.", "SpeedType Pro brings gamification to typing tests. Compete with yourself and earn achievements.", "Web development includes HTML, CSS, and JavaScript. Frameworks make it easier, but vanilla is fundamental.", "Artificial intelligence is shaping the future. Learn new technologies to stay relevant in the industry." ]; return paras[Math.floor(Math.random()*paras.length)]; }
+    function dailyChallenge() { const today = new Date().toDateString(); const seed = today.length; const dailyPara = "Daily challenge: The sunrise painted the sky with vibrant colors. Breathe deeply and type with precision. You can achieve greatness!"; resetTest(dailyPara); }
+    
+    // Event Handler for Typing
+    function handleTyping(e) {
+        if(!testActive || paused) return;
+        const newVal = e.target.value;
+        const prevLen = userInput.length;
+        userInput = newVal;
+        let mistakesInc = 0, correctInc = 0;
+        for(let i=0; i<Math.min(userInput.length, currentParagraph.length); i++) {
+            if(userInput[i] === currentParagraph[i]) correctInc++;
+            else if(i<userInput.length && userInput[i] !== currentParagraph[i]) { mistakesInc++; if(i>=prevLen) recordErrorKey(userInput[i]); }
+        }
+        totalTyped = userInput.length;
+        mistakes = userInput.length - correctInc;
+        correctChars = correctInc;
+        // combo update
+        let lastCharCorrect = false;
+        if(userInput.length>0 && userInput[userInput.length-1] === currentParagraph[userInput.length-1]) lastCharCorrect = true;
+        if(lastCharCorrect && userInput.length>0) { combo++; comboDisplaySpan.innerText = combo; document.getElementById('comboDisplay').classList.add('combo-pop'); setTimeout(()=>document.getElementById('comboDisplay').classList.remove('combo-pop'),200); if(combo%5===0 && soundEnabled) playSound('combo'); }
+        else if(userInput.length>0 && !lastCharCorrect) { combo=0; comboDisplaySpan.innerText="0"; }
+        if(userInput.length === currentParagraph.length && testActive && timeLeft>0) { endTest(); }
+        renderHighlight();
+        updateStats();
+        if(soundEnabled) playSound('type');
+    }
+    function playSound(type) { try { let audioCtx = new (window.AudioContext || window.webkitAudioContext)(); let osc = audioCtx.createOscillator(); let gain = audioCtx.createGain(); osc.connect(gain); gain.connect(audioCtx.destination); osc.frequency.value = type==='combo'?800:400; gain.gain.value = 0.1; osc.start(); gain.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime+0.2); osc.stop(audioCtx.currentTime+0.2); } catch(e){} }
+    function toggleBackgroundMusic() { musicEnabled = !musicEnabled; const btn = document.getElementById('bgMusicToggle'); if(musicEnabled) { if(!bgAudio){ bgAudio = new Audio('https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3'); bgAudio.loop=true; bgAudio.volume=0.2; } bgAudio.play(); btn.innerText = '🎵 Music On'; } else { if(bgAudio){ bgAudio.pause(); bgAudio.currentTime=0; } btn.innerText = '🎵 Music Off'; } }
+    function showConfetti() { canvasConfetti({ particleCount: 150, spread: 70, origin: { y: 0.6 }, startVelocity: 20, colors: ['#6c5ce7', '#00b894', '#fdcb6e'] }); }
+    // Init UI listeners
+    document.querySelectorAll('.timer-btn').forEach(btn=>{ btn.addEventListener('click',()=>{ selectedTime = parseInt(btn.dataset.time); timeLeft = selectedTime; resetTest(); }); });
+    document.getElementById('setCustomTimer').addEventListener('click',()=>{ let val = parseInt(document.getElementById('customTimerSec').value); if(val>0){ selectedTime=val; timeLeft=val; resetTest(); } });
+    document.getElementById('restartBtn').addEventListener('click',()=>{ resetTest(); });
+    document.getElementById('pauseResumeBtn').addEventListener('click',()=>{ if(!testActive) return; paused=!paused; userTextarea.disabled=paused; document.getElementById('pauseResumeBtn').innerText = paused?'▶️ Resume':'⏸️ Pause'; });
+    document.getElementById('dailyChallengeBtn').addEventListener('click',()=>{ dailyChallenge(); });
+    document.getElementById('soundToggleBtn').addEventListener('click',()=>{ soundEnabled=!soundEnabled; document.getElementById('soundToggleBtn').innerText = soundEnabled?'🔊 Sound On':'🔇 Sound Off'; });
+    document.getElementById('bgMusicToggle').addEventListener('click',toggleBackgroundMusic);
+    document.getElementById('darkLightToggle').addEventListener('click',()=>{ document.body.classList.toggle('light-mode'); });
+    document.getElementById('neonToggle').addEventListener('click',()=>{ document.body.classList.toggle('neon-mode'); });
+    document.getElementById('fullscreenBtn').addEventListener('click',()=>{ document.documentElement.requestFullscreen(); });
+    document.getElementById('settingsBtn').addEventListener('click',()=>{ document.getElementById('settingsModal').classList.add('active'); });
+    document.getElementById('closeModal').addEventListener('click',()=>{ document.getElementById('settingsModal').classList.remove('active'); });
+    document.getElementById('fontSlider').addEventListener('input',(e)=>{ targetDiv.style.fontSize = e.target.value+'px'; userTextarea.style.fontSize = e.target.value+'px'; });
+    document.getElementById('themeColor').addEventListener('input',(e)=>{ document.documentElement.style.setProperty('--primary', e.target.value); document.querySelectorAll('.btn-primary').forEach(b=>b.style.background=e.target.value); });
+    userTextarea.addEventListener('input', handleTyping);
+    // Particle background
+    const canvas = document.getElementById('particles-canvas'); const ctxP = canvas.getContext('2d'); function resizeCanvas(){ canvas.width=window.innerWidth; canvas.height=window.innerHeight; } window.addEventListener('resize',resizeCanvas); resizeCanvas(); let particles=[]; for(let i=0;i<70;i++) particles.push({x:Math.random()*canvas.width,y:Math.random()*canvas.height,radius:Math.random()*3+1,dx:(Math.random()-0.5)*0.5,dy:(Math.random()-0.5)*0.5}); function animateParticles(){ ctxP.clearRect(0,0,canvas.width,canvas.height); ctxP.fillStyle='rgba(255,255,255,0.4)'; particles.forEach(p=>{ p.x+=p.dx; p.y+=p.dy; if(p.x<0||p.x>canvas.width)p.dx*=-1; if(p.y<0||p.y>canvas.height)p.dy*=-1; ctxP.beginPath(); ctxP.arc(p.x,p.y,p.radius,0,Math.PI*2); ctxP.fill(); }); requestAnimationFrame(animateParticles); } animateParticles();
+    loadLocalData();
+    resetTest();
+</script>
+</body>
+</html>
